@@ -1,0 +1,542 @@
+async function registerUser() {
+
+    const data = {
+        name:
+        document.getElementById("name").value,
+
+        email:
+        document.getElementById("email").value,
+
+        password:
+        document.getElementById("password").value,
+
+        age:
+        parseInt(
+        document.getElementById("age").value),
+
+        gender:
+        document.getElementById("gender").value
+    };
+
+    let response = await fetch(
+        "http://127.0.0.1:8000/register",
+        {
+            method:"POST",
+            headers:{
+                "Content-Type":
+                "application/json"
+            },
+            body: JSON.stringify(data)
+        }
+    );
+
+    let result =
+    await response.json();
+
+    alert(result.message);
+}
+
+async function loginUser() {
+
+    const data = {
+        email:
+        document.getElementById(
+        "loginEmail").value,
+
+        password:
+        document.getElementById(
+        "loginPassword").value
+    };
+
+    let response = await fetch(
+        "http://127.0.0.1:8000/login",
+        {
+            method:"POST",
+            headers:{
+                "Content-Type":
+                "application/json"
+            },
+            body: JSON.stringify(data)
+        }
+    );
+
+    let result =
+    await response.json();
+
+    alert(result.message);
+
+    if(result.message ===
+       "Login Successful") {
+
+        localStorage.setItem(
+            "username",
+            result.name
+        );
+
+        window.location.href =
+        "dashboard.html";
+    }
+}
+async function loginUser() {
+
+    const data = {
+
+        email:
+        document.getElementById("loginEmail").value,
+
+        password:
+        document.getElementById("loginPassword").value
+    };
+
+    let response = await fetch(
+        "http://127.0.0.1:8000/login",
+        {
+            method: "POST",
+
+            headers: {
+                "Content-Type":
+                "application/json"
+            },
+
+            body: JSON.stringify(data)
+        }
+    );
+
+    let result = await response.json();
+
+    if(result.success){
+
+        localStorage.setItem(
+            "isLoggedIn",
+            "true"
+        );
+
+        localStorage.setItem(
+            "userName",
+            result.name
+        );
+
+        localStorage.setItem(
+            "userEmail",
+            result.email
+        );
+
+        showDashboard();
+
+    }else{
+
+        alert(result.message);
+    }
+}
+function showDashboard(){
+
+    document.getElementById(
+        "dashboard"
+    ).style.display = "block";
+
+    document.getElementById(
+        "welcomeUser"
+    ).innerText =
+    localStorage.getItem(
+        "userName"
+    );
+}
+window.onload = function(){
+
+    if(
+        localStorage.getItem(
+            "isLoggedIn"
+        ) === "true"
+    ){
+
+        showDashboard();
+    }
+}
+function logout(){
+
+    localStorage.removeItem(
+        "isLoggedIn"
+    );
+
+    localStorage.removeItem(
+        "userName"
+    );
+
+    localStorage.removeItem(
+        "userEmail"
+    );
+
+    location.reload();
+}
+async function saveHealthProfile(){
+
+    const data = {
+
+        email:
+        localStorage.getItem(
+            "userEmail"
+        ),
+
+        age:
+        parseInt(
+        document.getElementById(
+            "age"
+        ).value),
+
+        height:
+        parseFloat(
+        document.getElementById(
+            "height"
+        ).value),
+
+        weight:
+        parseFloat(
+        document.getElementById(
+            "weight"
+        ).value),
+
+        exercise_days:
+        parseInt(
+        document.getElementById(
+            "exerciseDays"
+        ).value),
+
+        sleep_hours:
+        parseInt(
+        document.getElementById(
+            "sleepHours"
+        ).value)
+    };
+
+    let response = await fetch(
+
+        "http://127.0.0.1:8000/save-health-profile",
+
+        {
+
+            method:"POST",
+
+            headers:{
+                "Content-Type":
+                "application/json"
+            },
+
+            body:
+            JSON.stringify(data)
+        }
+    );
+
+    let result =
+    await response.json();
+
+    document.getElementById(
+        "healthResult"
+    ).innerHTML =
+
+    `
+    <h3>Health Report</h3>
+
+    <p>
+    BMI:
+    ${result.BMI}
+    </p>
+
+    <p>
+    Health Score:
+    ${result["Health Score"]}
+    </p>
+    `;
+}
+async function loadHealthProfile(){
+
+    let email =
+    localStorage.getItem(
+        "userEmail"
+    );
+
+    let response =
+    await fetch(
+
+    "http://127.0.0.1:8000/get-health-profile?email="
+    + email
+
+    );
+
+    let result =
+    await response.json();
+
+    if(result.BMI){
+
+        document.getElementById(
+            "healthResult"
+        ).innerHTML =
+
+        `
+        <h3>Stored Profile</h3>
+
+        <p>BMI:
+        ${result.BMI}</p>
+
+        <p>Health Score:
+        ${result["Health Score"]}
+        </p>
+        `;
+    }
+}
+window.onload = function(){
+
+    if(
+        localStorage.getItem(
+            "isLoggedIn"
+        ) === "true"
+    ){
+
+        showDashboard();
+
+        loadHealthProfile();
+    }
+}
+async function analyzeEnvironment() {
+
+    let location =
+    document.getElementById(
+        "location"
+    ).value;
+
+    let response = await fetch(
+        "http://127.0.0.1:8000/environment-analysis",
+        {
+            method: "POST",
+
+            headers: {
+                "Content-Type":
+                "application/json"
+            },
+
+            body: JSON.stringify({
+                location: location
+            })
+        }
+    );
+
+    let result =
+    await response.json();
+
+    document.getElementById(
+        "environmentResult"
+    ).innerHTML =
+
+    `
+    <h3>Environmental Report</h3>
+
+    <p><b>Temperature:</b>
+    ${result.Temperature} °C</p>
+
+    <p><b>Humidity:</b>
+    ${result.Humidity}%</p>
+
+    <p><b>AQI:</b>
+    ${result.AQI}</p>
+
+    <p><b>UV Index:</b>
+    ${result["UV Index"]}</p>
+
+    <p><b>Weather Risk:</b>
+    ${result["Weather Risk"]}</p>
+
+    <p><b>Air Quality Risk:</b>
+    ${result["Air Quality Risk"]}</p>
+
+    <p><b>UV Exposure Risk:</b>
+    ${result["UV Exposure Risk"]}</p>
+    `;
+}
+async function generateDietPlan() {
+
+    const data = {
+
+        age: parseInt(
+            document.getElementById("age").value
+        ),
+
+        weight: parseFloat(
+            document.getElementById("weight").value
+        ),
+
+        bmi: 22,
+
+        location:
+            document.getElementById("location").value,
+
+        health_score: 80
+    };
+
+    let response = await fetch(
+        "http://127.0.0.1:8000/nutrition-ai",
+        {
+            method: "POST",
+
+            headers: {
+                "Content-Type":
+                "application/json"
+            },
+
+            body: JSON.stringify(data)
+        }
+    );
+
+    let result = await response.json();
+
+    document.getElementById(
+        "nutritionResult"
+    ).innerHTML =
+
+    `
+    <h3>AI Nutrition Plan</h3>
+
+    <pre>
+${result.diet_plan}
+    </pre>
+    `;
+}
+localStorage.setItem("BMI", bmi);
+localStorage.setItem("HealthScore", score);
+async function generateHealthTwin() {
+
+    const data = {
+
+        age: parseInt(
+            document.getElementById("age").value
+        ),
+
+        bmi: parseFloat(
+            localStorage.getItem("BMI") || 22
+        ),
+
+        health_score: parseInt(
+            localStorage.getItem("HealthScore") || 80
+        ),
+
+        exercise_days: parseInt(
+            document.getElementById(
+                "exerciseDays"
+            ).value
+        ),
+
+        sleep_hours: parseInt(
+            document.getElementById(
+                "sleepHours"
+            ).value
+        )
+    };
+
+    let response = await fetch(
+        "http://127.0.0.1:8000/digital-health-twin",
+        {
+            method: "POST",
+
+            headers: {
+                "Content-Type":
+                "application/json"
+            },
+
+            body: JSON.stringify(data)
+        }
+    );
+
+    let result = await response.json();
+
+    let risks = result["Predicted Risks"]
+        .map(r => `<li>${r}</li>`)
+        .join("");
+
+    let recs = result["Recommendations"]
+        .map(r => `<li>${r}</li>`)
+        .join("");
+
+    document.getElementById(
+        "healthTwinResult"
+    ).innerHTML =
+
+    `
+    <h3>Digital Health Twin Report</h3>
+
+    <p>
+    <b>Current Health Score:</b>
+    ${result["Current Health Score"]}
+    </p>
+
+    <p>
+    <b>Future Health Status:</b>
+    ${result["Future Health Status"]}
+    </p>
+
+    <h4>Predicted Risks</h4>
+    <ul>${risks}</ul>
+
+    <h4>Recommendations</h4>
+    <ul>${recs}</ul>
+    `;
+}
+async function loadCommunityDashboard() {
+
+    navigator.geolocation.getCurrentPosition(
+        async function(position){
+
+            const latitude =
+                position.coords.latitude;
+
+            const longitude =
+                position.coords.longitude;
+
+            let response = await fetch(
+                "http://127.0.0.1:8000/community-health-dashboard",
+                {
+                    method:"POST",
+
+                    headers:{
+                        "Content-Type":
+                        "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        latitude,
+                        longitude
+                    })
+                }
+            );
+
+            let result =
+                await response.json();
+
+            document.getElementById(
+                "communityResult"
+            ).innerHTML =
+
+            `
+            <h3>Community Health Dashboard</h3>
+
+            <p><b>City:</b>
+            ${result.City}</p>
+
+            <p><b>Temperature:</b>
+            ${result.Temperature}°C</p>
+
+            <p><b>Humidity:</b>
+            ${result.Humidity}%</p>
+
+            <p><b>Air Quality:</b>
+            ${result["Air Quality"]}</p>
+
+            <p><b>Heatwave Risk:</b>
+            ${result["Heatwave Risk"]}</p>
+
+            <h4>AI Recommendation</h4>
+
+            <pre>
+${result["AI Recommendation"]}
+            </pre>
+            `;
+        }
+    );
+}
