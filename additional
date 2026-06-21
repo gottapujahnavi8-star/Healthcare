@@ -1,0 +1,213 @@
+health_profiles = {}
+from fastapi import FastAPI
+
+app = FastAPI()
+import sqlite3
+conn = sqlite3.connect(
+    "arogyamitra.db",
+    check_same_thread=False
+)
+
+cursor = conn.cursor()
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS health_profiles (
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    email TEXT,
+
+    age INTEGER,
+
+    height REAL,
+
+    weight REAL,
+
+    exercise_days INTEGER,
+
+    sleep_hours INTEGER,
+
+    bmi REAL,
+
+    health_score INTEGER
+)
+""")
+
+conn.commit()
+from pydantic import BaseModel
+def save_health_profile(profile: HealthProfile):
+@app.post("/save-health-profile")
+def save_health_profile(profile: HealthProfile):
+
+    bmi = round(
+        profile.weight /
+        ((profile.height / 100) ** 2),
+        2
+    )
+
+    health_score = 50
+
+    if profile.exercise_days >= 5:
+        health_score += 20
+
+    elif profile.exercise_days >= 3:
+        health_score += 10
+
+    if profile.sleep_hours >= 7:
+        health_score += 15
+
+    if 18.5 <= bmi <= 24.9:
+        health_score += 15
+
+    cursor.execute(
+        """
+        INSERT INTO health_profiles
+        (
+            email,
+            age,
+            height,
+            weight,
+            exercise_days,
+            sleep_hours,
+            bmi,
+            health_score
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            profile.email,
+            profile.age,
+            profile.height,
+            profile.weight,
+            profile.exercise_days,
+            profile.sleep_hours,
+            bmi,
+            health_score
+        )
+    )
+
+    conn.commit()
+
+    return {
+        "BMI": bmi,
+        "Health Score": health_score,
+        "message": "Profile Saved"
+    }
+@app.get("/get-health-profile")
+def get_health_profile(email: str):
+
+    cursor.execute(
+        """
+        SELECT *
+        FROM health_profiles
+        WHERE email = ?
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        (email,)
+    )
+
+    row = cursor.fetchone()
+
+    if not row:
+        return {
+            "message": "Profile Not Found"
+        }
+
+    return {
+
+        "Email": row[1],
+
+        "Age": row[2],
+
+        "Height": row[3],
+
+        "Weight": row[4],
+
+        "Exercise Days": row[5],
+
+        "Sleep Hours": row[6],
+
+        "BMI": row[7],
+
+        "Health Score": row[8]
+    }
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS environment_records (
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    email TEXT,
+
+    temperature REAL,
+
+    humidity REAL,
+
+    aqi INTEGER,
+
+    uv_index INTEGER
+)
+""")
+
+conn.commit()
+cursor.execute(
+    """
+    INSERT INTO environment_records
+    (
+        email,
+        temperature,
+        humidity,
+        aqi,
+        uv_index
+    )
+    VALUES (?, ?, ?, ?, ?)
+    """,
+    (
+        email,
+        temperature,
+        humidity,
+        aqi,
+        uv_index
+    )
+)
+
+conn.commit()
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS nutrition_history (
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    email TEXT,
+
+    diet_plan TEXT
+)
+""")
+
+conn.commit()
+cursor.execute(
+    """
+    INSERT INTO nutrition_history
+    (
+        email,
+        diet_plan
+    )
+    VALUES (?, ?)
+    """,
+    (
+        email,
+        response.text
+    )
+)
+
+conn.commit()
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS digital_twin_reports (
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    email TEXT,
+
+    report TEXT
+)
+""")
+
+conn.commit()
