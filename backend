@@ -1,0 +1,402 @@
+from fastapi import FastAPI
+from database import engine, Base
+
+app = FastAPI()
+
+Base.metadata.create_all(bind=engine)
+
+@app.get("/")
+def home():
+    return {
+        "message": "ArogyaMitra Backend Running"
+    }
+from fastapi import Depends
+from sqlalchemy.orm import Session
+
+from database import SessionLocal
+from models import User
+from schemas import UserCreate
+from auth import hash_password
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@app.post("/register")
+def register_user(
+    user: UserCreate,
+    db: Session = Depends(get_db)
+):
+
+    existing_user = db.query(User).filter(
+        User.email == user.email
+    ).first()
+
+    if existing_user:
+        return {
+            "message":
+            "Email already registered"
+        }
+
+    new_user = User(
+        name=user.name,
+        email=user.email,
+        password=hash_password(
+            user.password
+        ),
+        age=user.age,
+        gender=user.gender
+    )
+
+    db.add(new_user)
+    db.commit()
+
+    return {
+        "message":
+        "Registration Successful"
+    }
+from schemas import UserLogin
+from auth import verify_password
+@app.post("/login")
+def login_user(
+    user: UserLogin,
+    db: Session = Depends(get_db)
+):
+
+    existing_user = db.query(User).filter(
+        User.email == user.email
+    ).first()
+
+    if not existing_user:
+        return {
+            "message":
+            "User not found"
+        }
+
+    if not verify_password(
+        user.password,
+        existing_user.password
+    ):
+        return {
+            "message":
+            "Incorrect Password"
+        }
+
+    return {
+        "message": "Login Successful",
+        "name": existing_user.name,
+        "email": existing_user.email
+    }
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+app = FastAPI()
+
+users = []
+
+class LoginData(BaseModel):
+    email: str
+    password: str
+
+@app.post("/login")
+def login(data: LoginData):
+
+    for user in users:
+
+        if (
+            user["email"] == data.email
+            and user["password"] == data.password
+        ):
+
+            return {
+                "success": True,
+                "name": user["name"],
+                "email": user["email"]
+            }
+
+    return {
+        "success": False,
+        "message": "Invalid Email or Password"
+    }
+from pydantic import BaseModel
+class HealthProfile(BaseModel):
+    email: str
+    age: int
+    height: float
+    weight: float
+    exercise_days: int
+    sleep_hours: int
+
+health_profiles = {}
+
+@app.post("/save-health-profile")
+def save_health_profile(profile: HealthProfile):
+
+    bmi = round(
+        profile.weight /
+        ((profile.height / 100) ** 2),
+        2
+    )
+
+    health_score = 50
+
+    if profile.exercise_days >= 5:
+        health_score += 20
+
+    elif profile.exercise_days >= 3:
+        health_score += 10
+
+    if profile.sleep_hours >= 7:
+        health_score += 15
+
+    if 18.5 <= bmi <= 24.9:
+        health_score += 15
+
+    health_profiles[profile.email] = {
+        "BMI": bmi,
+        "Health Score": health_score
+    }
+
+    return {
+        "message": "Profile Saved",
+        "BMI": bmi,
+        "Health Score": health_score
+    }
+@app.get("/get-health-profile")
+def get_profile(email: str):
+
+    if email not in health_profiles:
+
+        return {
+            "message": "Profile Not Found"
+        }
+
+    return health_profiles[email]
+class EnvironmentData(BaseModel):
+    location: str
+@app.post("/environment-analysis")
+def environment_analysis(data: EnvironmentData):
+
+    location = data.location.lower()
+
+    # Demo environmental values
+    if "vijayawada" in location:
+        temperature = 38
+        humidity = 70
+        aqi = 120
+        uv_index = 8
+
+    elif "visakhapatnam" in location:
+        temperature = 33
+        humidity = 78
+        aqi = 85
+        uv_index = 7
+
+    else:
+        temperature = 35
+        humidity = 65
+        aqi = 100
+        uv_index = 6
+
+    # Weather Risk
+    if temperature > 37:
+        weather_risk = "High Heat Risk"
+    elif temperature > 30:
+        weather_risk = "Moderate Heat Risk"
+    else:
+        weather_risk = "Low Risk"
+
+    # AQI Risk
+    if aqi > 150:
+        air_risk = "Unhealthy"
+    elif aqi > 100:
+        air_risk = "Moderate"
+    else:
+        air_risk = "Good"
+
+    # UV Risk
+    if uv_index >= 8:
+        uv_risk = "Very High"
+    elif uv_index >= 5:
+        uv_risk = "Moderate"
+    else:
+        uv_risk = "Low"
+
+    return {
+        "Location": data.location,
+        "Temperature": temperature,
+        "Humidity": humidity,
+        "AQI": aqi,
+        "UV Index": uv_index,
+        "Weather Risk": weather_risk,
+        "Air Quality Risk": air_risk,
+        "UV Exposure Risk": uv_risk
+    }
+from google import genai
+
+GEMINI_API_KEY = "AQ.Ab8RN6LDTFl4NKMxGVBBcqhThhjmmjkGwZBGO0zvg-JRV3VWug"
+
+client = genai.Client(api_key=GEMINI_API_KEY)
+class NutritionRequest(BaseModel):
+    age: int
+    weight: float
+    bmi: float
+    location: str
+    health_score: int
+@app.post("/nutrition-ai")
+def nutrition_ai(data: NutritionRequest):
+
+    prompt = f"""
+    You are ArogyaMitra AI.
+
+    User Details:
+    Age: {data.age}
+    Weight: {data.weight} kg
+    BMI: {data.bmi}
+    Location: {data.location}
+    Health Score: {data.health_score}
+
+    Give:
+    1. Breakfast Recommendation
+    2. Lunch Recommendation
+    3. Dinner Recommendation
+    4. Hydration Advice
+    5. Health Tips
+
+    Keep the response concise and practical.
+    """
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
+    )
+
+    return {
+        "diet_plan": response.text
+    }
+class HealthTwinRequest(BaseModel):
+    age: int
+    bmi: float
+    health_score: int
+    exercise_days: int
+    sleep_hours: int
+
+@app.post("/digital-health-twin-ai")
+def digital_health_twin_ai(data: HealthTwinRequest):
+
+    prompt = f"""
+    User Age: {data.age}
+    BMI: {data.bmi}
+    Health Score: {data.health_score}
+    Exercise Days: {data.exercise_days}
+    Sleep Hours: {data.sleep_hours}
+
+    Predict:
+    1. Future Health Outlook
+    2. Potential Risks
+    3. Personalized Recommendations
+
+    Keep it concise.
+    """
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
+    )
+
+    return {
+        "health_twin_report": response.text
+    }
+import requests
+OPENWEATHER_API_KEY = "6a459bd0f39d687d63e6089dd1c9c24f"
+
+
+client = genai.Client(api_key=GEMINI_API_KEY)
+class CommunityRequest(BaseModel):
+    latitude: float
+    longitude: float
+@app.post("/community-health-dashboard")
+def community_health_dashboard(data: CommunityRequest):
+
+    lat = data.latitude
+    lon = data.longitude
+
+    # Weather API
+    weather_url = (
+        f"https://api.openweathermap.org/data/2.5/weather"
+        f"?lat={lat}&lon={lon}"
+        f"&appid={OPENWEATHER_API_KEY}"
+        f"&units=metric"
+    )
+
+    weather = requests.get(weather_url).json()
+
+    temperature = weather["main"]["temp"]
+    humidity = weather["main"]["humidity"]
+    city = weather.get("name", "Unknown")
+
+    # Heat Risk
+    if temperature >= 40:
+        heatwave_risk = "Severe"
+    elif temperature >= 35:
+        heatwave_risk = "High"
+    elif temperature >= 30:
+        heatwave_risk = "Moderate"
+    else:
+        heatwave_risk = "Low"
+
+    # AQI API
+    aqi_url = (
+        f"http://api.openweathermap.org/data/2.5/air_pollution"
+        f"?lat={lat}&lon={lon}"
+        f"&appid={OPENWEATHER_API_KEY}"
+    )
+
+    aqi_data = requests.get(aqi_url).json()
+
+    aqi = aqi_data["list"][0]["main"]["aqi"]
+
+    aqi_map = {
+        1: "Good",
+        2: "Fair",
+        3: "Moderate",
+        4: "Poor",
+        5: "Very Poor"
+    }
+
+    air_quality = aqi_map.get(aqi, "Unknown")
+
+    # Gemini AI Recommendation
+    prompt = f"""
+    Community Health Analysis
+
+    City: {city}
+    Temperature: {temperature}°C
+    Humidity: {humidity}%
+    Air Quality: {air_quality}
+    Heatwave Risk: {heatwave_risk}
+
+    Give:
+    1. Community Health Status
+    2. Public Health Risks
+    3. Health Recommendations
+
+    Keep response under 150 words.
+    """
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
+    )
+
+    return {
+        "City": city,
+        "Temperature": temperature,
+        "Humidity": humidity,
+        "Air Quality": air_quality,
+        "Heatwave Risk": heatwave_risk,
+        "AI Recommendation": response.text
+    }
